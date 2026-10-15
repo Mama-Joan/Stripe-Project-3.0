@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const exphbs = require('express-handlebars');
 require('dotenv').config();
-const stripe = require('stripe');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY)
 
 var app = express();
 
@@ -24,7 +24,17 @@ app.get('/', function(req, res) {
 });
 
 /**
- * Checkout route
+ * Book Prices Reference for Posting Payment Intent
+ */
+
+const bookPrices = {
+  '1': 2300,
+  '2': 2500,
+  '3': 2800
+};
+
+/**
+ * Step 1: Display Checkout route
  */
 app.get('/checkout', function(req, res) {
   // Just hardcoding amounts here to avoid using a database
@@ -49,12 +59,42 @@ app.get('/checkout', function(req, res) {
       error = "No item selected"      
       break;
   }
-
   res.render('checkout', {
     title: title,
     amount: amount,
     error: error
   });
+});
+
+/** 
+ * Step 2: Create a PaymentIntent and send the client secret to the client
+*/
+
+app.post("/create-payment-intent", async (req, res) => {
+  try {
+    // Read the selected book ID from the URL
+    const item = req.query.item;
+
+    // Check for Book Prices
+    const amount = bookPrices[item];
+
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount,
+      currency: "sgd",
+
+      // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch {
+    res.status(500).send({ error: "Unable to start the payment." });
+  }
 });
 
 /**
