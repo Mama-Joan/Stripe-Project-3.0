@@ -67,7 +67,26 @@ app.get('/checkout', function(req, res) {
 });
 
 /** 
- * Step 2: Create a PaymentIntent and send the client secret to the client
+ * Step 2: Calculate order amount and currency without creating a PaymentIntent
+*/
+app.post("/calculate-order", async (req, res) => {
+  try {
+   
+   // Read the selected book ID from the URL
+    const item = req.query.item;
+
+    // Check for Book Prices
+    const amount = bookPrices[item];
+    
+    res.send({ amount, currency: "sgd" });
+  } catch {
+    res.status(500).send({ error: "Unable to calculate the order." });
+  }
+});
+
+
+/** 
+ * Step 3: Create a PaymentIntent and send the client secret to the client
 */
 
 app.post("/create-payment-intent", async (req, res) => {
